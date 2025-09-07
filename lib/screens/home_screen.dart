@@ -41,7 +41,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
     if (name != null && name.isNotEmpty) {
+      print('Creating project: $name');
       await meta.createProject(name);
+      print('Project created, refreshing list');
       setState(() {});
     }
   }

@@ -82,23 +82,33 @@ class MetadataService with ChangeNotifier {
 
   Future<List<String>> listProjects() async {
     final root = Directory('${_storage.rootPath}/projects');
-    if (!await root.exists()) return [];
+    if (!await root.exists()) {
+      print('Projects directory does not exist');
+      return [];
+    }
 
     final projects = <String>[];
     final dirs = root.listSync().whereType<Directory>();
 
+    print('Found ${dirs.length} project directories');
+
     for (final dir in dirs) {
       final projectName = p.basename(dir.path);
+      print('Checking project: $projectName');
+
       // Verificar si el proyecto tiene la estructura correcta
       if (await _isValidProject(dir)) {
+        print('Project $projectName is valid');
         projects.add(projectName);
       } else {
+        print('Project $projectName is invalid, deleting');
         // Eliminar proyecto con estructura incorrecta
         await dir.delete(recursive: true);
       }
     }
 
     projects.sort();
+    print('Returning ${projects.length} valid projects: $projects');
     return projects;
   }
 
@@ -111,6 +121,18 @@ class MetadataService with ChangeNotifier {
   Future<void> createProject(String project) async {
     await _storage.ensureProject(project);
     await _load(project);
+
+    // Crear archivo de metadatos inicial para que el proyecto sea válido
+    final metadataFile = _storage.metadataFile(project);
+    if (!await metadataFile.exists()) {
+      await metadataFile.writeAsString('[]');
+    }
+
+    // Crear archivo de descripciones inicial
+    final descriptionsFile = _storage.descriptionsFile(project);
+    if (!await descriptionsFile.exists()) {
+      await descriptionsFile.writeAsString('{}');
+    }
   }
 
   Future<void> deleteProject(String project) async {
