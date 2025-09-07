@@ -39,6 +39,7 @@ class MetadataService with ChangeNotifier {
     required String description,
     required String project,
     required String location,
+    required String appFolder,
     double? aspect,
   }) async {
     _savingCount++;
@@ -49,6 +50,7 @@ class MetadataService with ChangeNotifier {
       description: description,
       project: project,
       location: location,
+      appFolder: appFolder,
       aspect: aspect,
       token: RootIsolateToken.instance!,
     );

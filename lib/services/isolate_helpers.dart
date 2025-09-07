@@ -11,7 +11,6 @@ import 'package:media_store_plus/media_store_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../constants.dart';
 import '../models.dart';
 
 // Helper class to pass arguments to the photo saving isolate
@@ -22,6 +21,7 @@ class SavePhotoParams {
   final String location;
   final double? aspect;
   final RootIsolateToken token;
+  final String appFolder;
 
   SavePhotoParams({
     required this.xFile,
@@ -29,6 +29,7 @@ class SavePhotoParams {
     required this.project,
     required this.location,
     required this.token,
+    required this.appFolder,
     this.aspect,
   });
 }
@@ -107,14 +108,14 @@ Future<SavePhotoResult?> savePhotoIsolate(SavePhotoParams params) async {
   await MediaStore.ensureInitialized();
   // Guardar fotos en DCIM/<proyecto>/<ubicacion>.
   // Usamos relativePath con "proyecto/ubicacion"; el appFolder no se usa por DCIM.
-  MediaStore.appFolder = kAppFolder; // mantener consistente con inicialización
+  MediaStore.appFolder = params.appFolder; // usar el appFolder personalizado
   final mediaStore = MediaStore();
   final saveInfo = await mediaStore.saveFile(
     tempFilePath: processed.filePath,
     dirType: DirType.photo,
     dirName: DirName.dcim,
-    // Usar la ruta relativa completa para crear DCIM/<proyecto>/<ubicacion>.
-    relativePath: '${params.project}/${params.location}',
+    // Usar la ruta relativa completa para crear DCIM/<appFolder>/<proyecto>/<ubicacion>.
+    relativePath: '${params.appFolder}/${params.project}/${params.location}',
   );
 
   // Clean up temp file
@@ -180,8 +181,8 @@ Future<String?> createZipIsolate(CreateZipParams params) async {
       ArchiveFile('descriptions.txt', descBytes.length, descBytes));
 
   final projectDataBytes = utf8.encode(params.projectDataReport);
-  encoder.addArchiveFile(
-      ArchiveFile('infoproyect.txt', projectDataBytes.length, projectDataBytes));
+  encoder.addArchiveFile(ArchiveFile(
+      'infoproyect.txt', projectDataBytes.length, projectDataBytes));
 
   encoder.close();
   return zipPath;
@@ -196,7 +197,8 @@ void createZipWithProgressIsolate(Map<String, dynamic> args) async {
   final CreateZipParams params = args['params'] as CreateZipParams;
 
   try {
-    final total = params.photos.length + 2; // photos + descriptions + infoproyect
+    final total =
+        params.photos.length + 2; // photos + descriptions + infoproyect
     final zipName =
         '${params.project}_${DateTime.now().millisecondsSinceEpoch}.zip';
     final zipPath = p.join(Directory.systemTemp.path, zipName);
@@ -222,15 +224,21 @@ void createZipWithProgressIsolate(Map<String, dynamic> args) async {
     final descBytes = utf8.encode(params.descriptions);
     encoder.addArchiveFile(
         ArchiveFile('descriptions.txt', descBytes.length, descBytes));
-    sendPort.send(
-        {'type': 'progress', 'current': params.photos.length + 1, 'total': total});
+    sendPort.send({
+      'type': 'progress',
+      'current': params.photos.length + 1,
+      'total': total
+    });
 
     // Add infoproyect.txt
     final projectDataBytes = utf8.encode(params.projectDataReport);
-    encoder.addArchiveFile(
-        ArchiveFile('infoproyect.txt', projectDataBytes.length, projectDataBytes));
-    sendPort.send(
-        {'type': 'progress', 'current': params.photos.length + 2, 'total': total});
+    encoder.addArchiveFile(ArchiveFile(
+        'infoproyect.txt', projectDataBytes.length, projectDataBytes));
+    sendPort.send({
+      'type': 'progress',
+      'current': params.photos.length + 2,
+      'total': total
+    });
 
     encoder.close();
     sendPort.send({'type': 'done', 'zipPath': zipPath});

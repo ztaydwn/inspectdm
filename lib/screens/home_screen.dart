@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/metadata_service.dart';
+//import '../providers/config_provider.dart';
 import 'project_screen.dart';
+import 'config_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,10 +27,16 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Nuevo proyecto'),
-        content: TextField(controller: controller, decoration: const InputDecoration(labelText: 'Nombre')),
+        content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(labelText: 'Nombre')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Crear')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, null),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              child: const Text('Crear')),
         ],
       ),
     );
@@ -41,7 +49,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('InspectW – Proyectos')),
+      appBar: AppBar(
+        title: const Text('InspectW – Proyectos'),
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ConfigScreen()),
+              );
+            },
+            icon: const Icon(Icons.settings),
+            tooltip: 'Configuración',
+          ),
+        ],
+      ),
       body: FutureBuilder<List<String>>(
         future: meta.listProjects(),
         builder: (context, snap) {
@@ -77,11 +99,15 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBuilder: (context, i) {
               final p = items[i];
               return Card(
-                margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                margin:
+                    const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
                 child: ListTile(
                   leading: const Icon(Icons.folder_open),
                   title: Text(p),
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProjectScreen(project: p))),
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => ProjectScreen(project: p))),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline),
                     onPressed: () async {
@@ -89,10 +115,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         context: context,
                         builder: (ctx) => AlertDialog(
                           title: const Text('Eliminar proyecto'),
-                          content: Text('¿Eliminar "$p"? Esta acción es irreversible.'),
+                          content: Text(
+                              '¿Eliminar "$p"? Esta acción es irreversible.'),
                           actions: [
-                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-                            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Eliminar')),
+                            TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Cancelar')),
+                            FilledButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text('Eliminar')),
                           ],
                         ),
                       );

@@ -16,9 +16,9 @@ import '../services/storage_service.dart';
 import '../services/metadata_service.dart';
 import '../services/upload_service.dart';
 import '../models.dart';
+import '../providers/config_provider.dart';
 import 'gallery_screen.dart';
 import 'camera_screen.dart';
-import '../constants.dart';
 import 'location_checklist_screen.dart';
 import 'search_explorer_screen.dart';
 import 'project_data_screen.dart';
@@ -105,8 +105,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
     final statuses = await meta.getLocationStatuses(widget.project);
     final List<_LocationInfo> locationInfoList = [];
     for (final status in statuses) {
-      final isChecklist =
-          await storage.checklistFile(widget.project, status.locationName).exists();
+      final isChecklist = await storage
+          .checklistFile(widget.project, status.locationName)
+          .exists();
       locationInfoList.add(_LocationInfo(
         name: status.locationName,
         isChecklist: isChecklist,
@@ -127,15 +128,20 @@ class _ProjectScreenState extends State<ProjectScreen> {
       final report = await meta.generateProjectReport(widget.project);
 
       // 2. Llamar al método de exportación simplificado.
-      final savedFile = await storage.exportReportToDownloads(
-        project: widget.project,
-        reportContent: report,
-      );
-
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Archivo $savedFile copiado a Descargas')),
+        final configProvider =
+            Provider.of<ConfigProvider>(context, listen: false);
+        final savedFile = await storage.exportReportToDownloads(
+          project: widget.project,
+          reportContent: report,
+          appFolder: configProvider.appFolder,
         );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Archivo $savedFile copiado a Descargas')),
+          );
+        }
       }
     } catch (e) {
       debugPrint('Error al copiar archivos de datos: $e');
@@ -431,7 +437,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
       final zipPath = await completer.future;
 
       // Cleanup
-      try { _zipReceivePort?.close(); } catch (_) {}
+      try {
+        _zipReceivePort?.close();
+      } catch (_) {}
       _zipReceivePort = null;
       _zipIsolate?.kill(priority: Isolate.immediate);
       _zipIsolate = null;
@@ -444,7 +452,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
         return null;
       }
 
-      debugPrint('[ZIP] Created $zipPath with ${photosWithPaths.length} entries.');
+      debugPrint(
+          '[ZIP] Created $zipPath with ${photosWithPaths.length} entries.');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content:
@@ -467,35 +476,41 @@ class _ProjectScreenState extends State<ProjectScreen> {
     final zipPath = await _buildZipForProject();
     if (zipPath == null) return;
 
-    try {
-      await MediaStore.ensureInitialized();
-      MediaStore.appFolder = kAppFolder;
-      await MediaStore().saveFile(
-        tempFilePath: zipPath,
-        dirType: DirType.download,
-        dirName: DirName.download,
-        relativePath: p.join(kAppFolder, widget.project),
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('ZIP saved to Download/$kAppFolder')));
-      }
-    } catch (e) {
-      debugPrint('[ZIP] Error saving to MediaStore: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to save ZIP to Download: $e')));
-      }
-    } finally {
+    if (mounted) {
       try {
-        final tmpZip = File(zipPath);
-        if (await tmpZip.exists()) {
-          await tmpZip.delete();
-        } else {
-          debugPrint('[ZIP] Temp not found (already moved/cleaned): $zipPath');
+        final configProvider =
+            Provider.of<ConfigProvider>(context, listen: false);
+        await MediaStore.ensureInitialized();
+        MediaStore.appFolder = configProvider.appFolder;
+        await MediaStore().saveFile(
+          tempFilePath: zipPath,
+          dirType: DirType.download,
+          dirName: DirName.download,
+          relativePath: p.join(configProvider.appFolder, widget.project),
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content:
+                  Text('ZIP saved to Download/${configProvider.appFolder}')));
         }
       } catch (e) {
-        debugPrint('[ZIP] Failed to delete temp file: $e');
+        debugPrint('[ZIP] Error saving to MediaStore: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to save ZIP to Download: $e')));
+        }
+      } finally {
+        try {
+          final tmpZip = File(zipPath);
+          if (await tmpZip.exists()) {
+            await tmpZip.delete();
+          } else {
+            debugPrint(
+                '[ZIP] Temp not found (already moved/cleaned): $zipPath');
+          }
+        } catch (e) {
+          debugPrint('[ZIP] Failed to delete temp file: $e');
+        }
       }
     }
   }
@@ -577,7 +592,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Proyecto: ${widget.project}', style: const TextStyle(fontSize: 18.0)),
+        title: Text('Proyecto: ${widget.project}',
+            style: const TextStyle(fontSize: 18.0)),
         actions: [
           IconButton(
             icon: Icon(_isGridView ? Icons.view_list : Icons.view_module),
@@ -844,17 +860,23 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 return Card(
                   margin: const EdgeInsets.symmetric(vertical: 4.0),
                   child: ListTile(
-                    leading: Icon(isChecklist ? Icons.checklist_rtl : Icons.place_outlined),
+                    leading: Icon(isChecklist
+                        ? Icons.checklist_rtl
+                        : Icons.place_outlined),
                     title: Text(loc),
-                    subtitle: Text(isChecklist ? 'Checklist' : 'Galería de fotos'),
+                    subtitle:
+                        Text(isChecklist ? 'Checklist' : 'Galería de fotos'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (isCompleted)
                           const Icon(Icons.check_circle, color: Colors.green),
                         IconButton(
-                          icon: Icon(isChecklist ? Icons.playlist_add_check_circle_outlined : Icons.camera_alt_outlined),
-                          tooltip: isChecklist ? 'Ver Checklist' : 'Añadir Foto',
+                          icon: Icon(isChecklist
+                              ? Icons.playlist_add_check_circle_outlined
+                              : Icons.camera_alt_outlined),
+                          tooltip:
+                              isChecklist ? 'Ver Checklist' : 'Añadir Foto',
                           onPressed: () {
                             if (isChecklist) {
                               Navigator.push(
@@ -918,7 +940,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
               elevation: 8,
               color: Colors.white,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(
                   children: [
                     Expanded(

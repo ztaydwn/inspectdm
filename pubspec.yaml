@@ -1,5 +1,5 @@
-name: inspectw_camera
-description: App de cámara (fotos + descripciones) con proyectos/ubicaciones y exportación ZIP
+name: inspectw_camera_custom
+description: App de cámara personalizable (fotos + descripciones) con proyectos/ubicaciones y exportación ZIP
 publish_to: "none"
 version: 0.1.0+1
 
@@ -24,6 +24,7 @@ dependencies:
   speech_to_text: ^7.3.0
   http: ^0.13.5
   http_parser: ^4.0.3
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:

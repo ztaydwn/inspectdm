@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../services/metadata_service.dart';
 import '../widgets/description_input.dart';
-import '../constants.dart';
+import '../providers/config_provider.dart';
 
 enum AspectOpt { sensor, a16x9, a4x3, a1x1 }
 
@@ -129,21 +129,26 @@ class _CameraScreenState extends State<CameraScreen> {
       final desc = await _getPhotoDescription();
       if (desc == null) return; // User cancelled
 
-      final newPhoto = await metadataService.saveNewPhoto(
-        xFile: xFile,
-        description: desc,
-        project: widget.project,
-        location: widget.location,
-        aspect: _aspectToDouble(aspect),
-      );
-
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Foto capturada. Guardando...'),
-          duration: Duration(seconds: 2),
-        ));
-        if (!widget.stayAfterCapture) {
-          Navigator.pop(context, newPhoto);
+        final configProvider =
+            Provider.of<ConfigProvider>(context, listen: false);
+        final newPhoto = await metadataService.saveNewPhoto(
+          xFile: xFile,
+          description: desc,
+          project: widget.project,
+          location: widget.location,
+          appFolder: configProvider.appFolder,
+          aspect: _aspectToDouble(aspect),
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Foto capturada. Guardando...'),
+            duration: Duration(seconds: 2),
+          ));
+          if (!widget.stayAfterCapture) {
+            Navigator.pop(context, newPhoto);
+          }
         }
       }
     } on CameraException catch (e) {
@@ -186,7 +191,9 @@ class _CameraScreenState extends State<CameraScreen> {
               Flexible(
                 child: ListView(
                   shrinkWrap: true,
-                  children: kDescriptionGroups.keys.map((group) {
+                  children: Provider.of<ConfigProvider>(context, listen: false)
+                      .getGroupNames()
+                      .map((group) {
                     return ListTile(
                       title: Text(group),
                       onTap: () => Navigator.pop(ctx, group),
@@ -202,7 +209,8 @@ class _CameraScreenState extends State<CameraScreen> {
       if (selectedGroup == null || !mounted) return null;
 
       // 2. Obtener los subgrupos del grupo seleccionado
-      final subgroups = kDescriptionGroups[selectedGroup] ?? [];
+      final subgroups = Provider.of<ConfigProvider>(context, listen: false)
+          .getGroupItems(selectedGroup);
       if (subgroups.isEmpty) {
         selectedSubgroup = selectedGroup;
       } else {
@@ -439,7 +447,8 @@ class _CameraScreenState extends State<CameraScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Text(
                 _shortPresetName(preset),
-                style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    color: Colors.black, fontWeight: FontWeight.bold),
               ),
             ),
           ),

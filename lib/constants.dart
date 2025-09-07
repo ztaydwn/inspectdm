@@ -1,4 +1,4 @@
-const String kAppFolder = 'InspectW';
+const String kAppFolder = 'InspectW_Personalizado';
 const Map<String, List<String>> kDescriptionGroups = {
   'A. EXTINTORES': [
     '1.3.2	Está en un lugar accesible?',

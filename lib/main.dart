@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
 import 'services/metadata_service.dart';
+import 'providers/config_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,9 +20,10 @@ class InspectWApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<MetadataService>.value(value: meta),
+        ChangeNotifierProvider(create: (_) => ConfigProvider()..loadConfig()),
       ],
       child: MaterialApp(
-        title: 'InspectW Camera',
+        title: 'InspectW Camera Custom',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
               seedColor: const Color.fromARGB(255, 0, 131, 155)),

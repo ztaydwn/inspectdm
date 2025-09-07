@@ -1,8 +1,9 @@
 // NUEVO WIDGET: Pantalla para ver foto a pantalla completa, con acciones
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/metadata_service.dart';
 import 'dart:io';
-import '../constants.dart';
+import '../providers/config_provider.dart';
 
 class PhotoViewerScreen extends StatelessWidget {
   final String imagePath;
@@ -99,7 +100,8 @@ class _EditDescriptionSheetState extends State<_EditDescriptionSheet> {
     super.initState();
 
     // Find the initial group and description
-    for (var group in kDescriptionGroups.entries) {
+    final configProvider = Provider.of<ConfigProvider>(context, listen: false);
+    for (var group in configProvider.groups.entries) {
       if (group.value.contains(widget.initial)) {
         _selectedGroup = group.key;
         _selectedDescription = widget.initial;
@@ -110,8 +112,8 @@ class _EditDescriptionSheetState extends State<_EditDescriptionSheet> {
 
     // If not found (e.g., custom description), set defaults
     if (_selectedGroup == null) {
-      _selectedGroup = kDescriptionGroups.keys.first;
-      _descriptionsForGroup = kDescriptionGroups[_selectedGroup]!;
+      _selectedGroup = configProvider.getGroupNames().first;
+      _descriptionsForGroup = configProvider.getGroupItems(_selectedGroup!);
       _selectedDescription = _descriptionsForGroup.first;
     }
   }
@@ -131,7 +133,9 @@ class _EditDescriptionSheetState extends State<_EditDescriptionSheet> {
             DropdownButtonFormField<String>(
               initialValue: _selectedGroup,
               decoration: const InputDecoration(labelText: 'Grupo'),
-              items: kDescriptionGroups.keys.map((String group) {
+              items: Provider.of<ConfigProvider>(context, listen: false)
+                  .getGroupNames()
+                  .map((String group) {
                 return DropdownMenuItem<String>(
                   value: group,
                   child: Text(group),
@@ -140,7 +144,9 @@ class _EditDescriptionSheetState extends State<_EditDescriptionSheet> {
               onChanged: (String? newValue) {
                 setState(() {
                   _selectedGroup = newValue!;
-                  _descriptionsForGroup = kDescriptionGroups[_selectedGroup]!;
+                  _descriptionsForGroup =
+                      Provider.of<ConfigProvider>(context, listen: false)
+                          .getGroupItems(_selectedGroup!);
                   // Reset description if it's not in the new group
                   if (!_descriptionsForGroup.contains(_selectedDescription)) {
                     _selectedDescription = _descriptionsForGroup.first;

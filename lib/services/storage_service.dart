@@ -4,7 +4,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:media_store_plus/media_store_plus.dart';
 import 'package:flutter/foundation.dart'; // Add this import for debugPrint
-import '../constants.dart'; // Para kAppFolder
+
+// import '../providers/config_provider.dart';
 
 class StorageService {
   static final StorageService _i = StorageService._();
@@ -69,7 +70,8 @@ class StorageService {
       File('${_appDir.path}/projects/$project/project_data.json');
 
   Future<Directory> ensureChecklistDir(String project) async {
-    final d = Directory(p.join(_appDir.path, 'projects', project, 'checklists'));
+    final d =
+        Directory(p.join(_appDir.path, 'projects', project, 'checklists'));
     if (!await d.exists()) await d.create(recursive: true);
     return d;
   }
@@ -185,6 +187,7 @@ class StorageService {
   Future<String> exportReportToDownloads({
     required String project,
     required String reportContent,
+    required String appFolder,
   }) async {
     await init();
 
@@ -194,7 +197,7 @@ class StorageService {
 
     final mediaStore = MediaStore();
     await MediaStore.ensureInitialized();
-    MediaStore.appFolder = kAppFolder;
+    MediaStore.appFolder = appFolder;
 
     final tempDir = await getTemporaryDirectory();
     final fileName = '${project}_report.txt';
@@ -205,7 +208,7 @@ class StorageService {
       tempFilePath: tempReportFile.path,
       dirType: DirType.download,
       dirName: DirName.download,
-      relativePath: p.join(kAppFolder, project),
+      relativePath: p.join(appFolder, project),
     );
 
     // MediaStore MUEVE el archivo, así que no necesitamos borrar el temporal.
