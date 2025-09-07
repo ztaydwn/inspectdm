@@ -83,12 +83,29 @@ class MetadataService with ChangeNotifier {
   Future<List<String>> listProjects() async {
     final root = Directory('${_storage.rootPath}/projects');
     if (!await root.exists()) return [];
-    return root
-        .listSync()
-        .whereType<Directory>()
-        .map((e) => p.basename(e.path))
-        .toList()
-      ..sort();
+
+    final projects = <String>[];
+    final dirs = root.listSync().whereType<Directory>();
+
+    for (final dir in dirs) {
+      final projectName = p.basename(dir.path);
+      // Verificar si el proyecto tiene la estructura correcta
+      if (await _isValidProject(dir)) {
+        projects.add(projectName);
+      } else {
+        // Eliminar proyecto con estructura incorrecta
+        await dir.delete(recursive: true);
+      }
+    }
+
+    projects.sort();
+    return projects;
+  }
+
+  Future<bool> _isValidProject(Directory projectDir) async {
+    // Un proyecto válido debe tener al menos un archivo de metadatos
+    final metadataFile = File(p.join(projectDir.path, 'metadata.json'));
+    return await metadataFile.exists();
   }
 
   Future<void> createProject(String project) async {

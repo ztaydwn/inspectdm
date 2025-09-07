@@ -341,22 +341,6 @@ class _CameraScreenState extends State<CameraScreen> {
             child: DescriptionInput(
               project: widget.project,
               initial: '', // Empezar vacío para que agreguen texto adicional
-              presets: const [
-                'oxidado',
-                'roto',
-                'faltante',
-                'corrosión',
-                'grieta',
-                'fisura',
-                'humedad',
-                'desgastado',
-                'suelto',
-                'mal estado',
-                'presenta daños',
-                'no funciona',
-                'en buen estado',
-                'requiere mantenimiento',
-              ],
             ),
           ),
         ],

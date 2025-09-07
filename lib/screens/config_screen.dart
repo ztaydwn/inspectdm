@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:inspectw_camera_custom/services/config_service.dart';
 import 'package:provider/provider.dart';
 import '../providers/config_provider.dart';
+// import '../services/saved_texts_service.dart';
+import 'saved_texts_screen.dart';
 
 class ConfigScreen extends StatefulWidget {
   const ConfigScreen({super.key});
@@ -24,31 +27,6 @@ class _ConfigScreenState extends State<ConfigScreen> {
     _loadConfig();
   }
 
-  Future<void> _loadConfig() async {
-    setState(() => _isLoading = true);
-
-    final configProvider = Provider.of<ConfigProvider>(context, listen: false);
-    await configProvider.loadConfig();
-
-    setState(() {
-      _groups = Map.from(configProvider.groups);
-      _folderController.text = configProvider.appFolder;
-      _initializeControllers();
-      _isLoading = false;
-    });
-  }
-
-  void _initializeControllers() {
-    _groupControllers.clear();
-    _itemControllers.clear();
-
-    for (final entry in _groups.entries) {
-      _groupControllers[entry.key] = TextEditingController(text: entry.key);
-      _itemControllers[entry.key] =
-          entry.value.map((item) => TextEditingController(text: item)).toList();
-    }
-  }
-
   void _addGroup() {
     final newGroupKey = 'NUEVO GRUPO ${_groups.length + 1}';
     setState(() {
@@ -62,6 +40,10 @@ class _ConfigScreenState extends State<ConfigScreen> {
   }
 
   void _addItem(String groupKey) {
+    if (!_groups.containsKey(groupKey)) {
+      return;
+    }
+
     setState(() {
       _groups[groupKey]!.add('Nuevo elemento');
       _itemControllers[groupKey]!
@@ -111,6 +93,154 @@ class _ConfigScreenState extends State<ConfigScreen> {
       _groups[groupKey]![index] = newValue;
       _hasChanges = true;
     });
+  }
+
+  Future<void> _loadConfig() async {
+    setState(() => _isLoading = true);
+
+    final configProvider = Provider.of<ConfigProvider>(context, listen: false);
+    await configProvider.loadConfig();
+
+    setState(() {
+      _groups = Map.from(configProvider.groups);
+      _folderController.text = configProvider.appFolder;
+      _initializeControllers();
+      _isLoading = false; // Agregar esta línea
+    });
+  }
+
+  void _initializeControllers() {
+    _groupControllers.clear();
+    _itemControllers.clear();
+
+    for (final entry in _groups.entries) {
+      _groupControllers[entry.key] = TextEditingController(text: entry.key);
+      _itemControllers[entry.key] =
+          entry.value.map((item) => TextEditingController(text: item)).toList();
+    }
+  }
+
+  Future<void> _saveAsNamedConfiguration() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Guardar configuración'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Nombre de la configuración',
+            hintText: 'Ej: Inspección Oficinas, Inspección Industrial',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, null),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+
+    if (name != null && name.isNotEmpty) {
+      try {
+        // Preparar datos actuales
+        final updatedGroups = <String, List<String>>{};
+        for (final entry in _groups.entries) {
+          final controller = _groupControllers[entry.key];
+          final groupName = controller?.text ?? entry.key;
+          updatedGroups[groupName] = entry.value;
+        }
+
+        // Actualizar elementos
+        for (final entry in updatedGroups.entries) {
+          final controllers = _itemControllers[entry.key];
+          if (controllers != null) {
+            updatedGroups[entry.key] = controllers
+                .map((controller) => controller.text)
+                .where((text) => text.isNotEmpty)
+                .toList();
+          }
+        }
+
+        final success = await ConfigService.saveNamedConfiguration(
+          name,
+          updatedGroups,
+          _folderController.text,
+        );
+
+        if (success) {
+          _showSuccess('Configuración "$name" guardada exitosamente');
+        } else {
+          _showError('Error guardando configuración');
+        }
+      } catch (e) {
+        _showError('Error guardando configuración: $e');
+      }
+    }
+  }
+
+  Future<void> _loadNamedConfiguration() async {
+    try {
+      final savedConfigs = await ConfigService.getSavedConfigurations();
+
+      if (savedConfigs.isEmpty) {
+        _showError('No hay configuraciones guardadas');
+        return;
+      }
+      if (mounted) {
+        final configNames = savedConfigs.keys.toList();
+        final selectedName = await showDialog<String?>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Cargar configuración'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: configNames.length,
+                itemBuilder: (context, index) {
+                  final name = configNames[index];
+                  final config = savedConfigs[name]!;
+                  final savedAt = DateTime.parse(config['savedAt'] as String);
+
+                  return ListTile(
+                    title: Text(name),
+                    subtitle: Text(
+                        'Guardado: ${savedAt.day}/${savedAt.month}/${savedAt.year}'),
+                    onTap: () => Navigator.pop(ctx, name),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, null),
+                child: const Text('Cancelar'),
+              ),
+            ],
+          ),
+        );
+
+        if (selectedName != null) {
+          final success =
+              await ConfigService.loadNamedConfiguration(selectedName);
+          if (success) {
+            await _loadConfig();
+            _showSuccess('Configuración "$selectedName" cargada exitosamente');
+          } else {
+            _showError('Error cargando configuración');
+          }
+        }
+      }
+    } catch (e) {
+      _showError('Error cargando configuración: $e');
+    }
   }
 
   Future<void> _saveConfig() async {
@@ -178,6 +308,15 @@ class _ConfigScreenState extends State<ConfigScreen> {
     }
   }
 
+  Future<void> _manageSavedTexts() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SavedTextsScreen(),
+      ),
+    );
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
@@ -240,6 +379,36 @@ class _ConfigScreenState extends State<ConfigScreen> {
           PopupMenuButton(
             itemBuilder: (context) => [
               const PopupMenuItem(
+                value: 'save_as',
+                child: Row(
+                  children: [
+                    Icon(Icons.save_as, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text('Guardar como...'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'load',
+                child: Row(
+                  children: [
+                    Icon(Icons.folder_open, color: Colors.green),
+                    SizedBox(width: 8),
+                    Text('Cargar configuración'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'texts',
+                child: Row(
+                  children: [
+                    Icon(Icons.text_fields, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text('Gestionar textos guardados'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
                 value: 'reset',
                 child: Row(
                   children: [
@@ -251,7 +420,13 @@ class _ConfigScreenState extends State<ConfigScreen> {
               ),
             ],
             onSelected: (value) {
-              if (value == 'reset') {
+              if (value == 'save_as') {
+                _saveAsNamedConfiguration();
+              } else if (value == 'load') {
+                _loadNamedConfiguration();
+              } else if (value == 'texts') {
+                _manageSavedTexts();
+              } else if (value == 'reset') {
                 _resetToDefault();
               }
             },

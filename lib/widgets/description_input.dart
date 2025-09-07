@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:diacritic/diacritic.dart'; // opcional, para quitar tildes
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import '../services/saved_texts_service.dart';
 
 class DescriptionInput extends StatefulWidget {
   final String project;
   final String? initial;
-  final List<String> presets;
   const DescriptionInput({
     super.key,
     required this.project,
     this.initial,
-    this.presets = const [],
   });
 
   @override
@@ -20,6 +19,7 @@ class DescriptionInput extends StatefulWidget {
 class _DescriptionInputState extends State<DescriptionInput> {
   final c = TextEditingController();
   List<String> _matches = [];
+  List<String> _savedTexts = [];
 
   // Voice-to-text variables
   late stt.SpeechToText _speech;
@@ -31,9 +31,9 @@ class _DescriptionInputState extends State<DescriptionInput> {
   void initState() {
     super.initState();
     if (widget.initial != null) c.text = widget.initial!;
-    _matches = widget.presets;
     c.addListener(_onChanged);
     _initSpeech();
+    _loadSavedTexts();
   }
 
   @override
@@ -123,9 +123,9 @@ class _DescriptionInputState extends State<DescriptionInput> {
     final q = _norm(c.text);
     setState(() {
       if (q.isEmpty) {
-        _matches = widget.presets;
+        _matches = _savedTexts;
       } else {
-        _matches = widget.presets
+        _matches = _savedTexts
             // prioriza empieza-con, luego contiene
             .where((e) => _norm(e).startsWith(q) || _norm(e).contains(q))
             .toList();
@@ -138,6 +138,24 @@ class _DescriptionInputState extends State<DescriptionInput> {
     c.selection =
         TextSelection.fromPosition(TextPosition(offset: c.text.length));
     setState(() {});
+  }
+
+  /// Carga los textos guardados
+  Future<void> _loadSavedTexts() async {
+    final savedTexts = await SavedTextsService.getSavedTexts();
+    setState(() {
+      _savedTexts = savedTexts;
+      _matches = savedTexts;
+    });
+  }
+
+  /// Guarda el texto actual en la lista de textos guardados
+  Future<void> _saveCurrentText() async {
+    final text = c.text.trim();
+    if (text.isNotEmpty) {
+      await SavedTextsService.saveText(text);
+      await _loadSavedTexts(); // Recargar la lista
+    }
   }
 
   @override
@@ -275,7 +293,17 @@ class _DescriptionInputState extends State<DescriptionInput> {
               ),
               const Spacer(),
               FilledButton(
-                onPressed: () => Navigator.pop(context, c.text.trim()),
+                onPressed: () async {
+                  final text = c.text.trim();
+                  final navigator = Navigator.of(context);
+                  if (text.isNotEmpty) {
+                    // Guardar el texto en la lista de textos guardados
+                    await _saveCurrentText();
+                  }
+                  if (mounted) {
+                    navigator.pop(text);
+                  }
+                },
                 child: const Text('Guardar'),
               ),
             ],

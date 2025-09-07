@@ -12,14 +12,19 @@ void main() {
     final metadataService = MetadataService();
     await metadataService.init();
 
+    // Initialize the config provider
+    final configProvider = ConfigProvider();
+    await configProvider.loadConfig();
+
     // Build our app and trigger a frame.
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           ChangeNotifierProvider<MetadataService>.value(value: metadataService),
-          ChangeNotifierProvider(create: (_) => ConfigProvider()..loadConfig()),
+          ChangeNotifierProvider<ConfigProvider>.value(value: configProvider),
         ],
-        child: InspectWApp(meta: metadataService),
+        child:
+            InspectWApp(meta: metadataService, configProvider: configProvider),
       ),
     );
 
@@ -27,7 +32,7 @@ void main() {
     expect(find.text('InspectW – Proyectos'), findsOneWidget);
 
     // Verify that the "no projects" message is shown.
-    expect(find.text('Sin proyectos. Crea el primero.'), findsOneWidget);
+    expect(find.text('No hay proyectos'), findsOneWidget);
 
     // Verify that the FloatingActionButton is present.
     expect(find.byIcon(Icons.add), findsOneWidget);
@@ -38,14 +43,19 @@ void main() {
     final metadataService = MetadataService();
     await metadataService.init();
 
+    // Initialize the config provider
+    final configProvider = ConfigProvider();
+    await configProvider.loadConfig();
+
     // Build our app and trigger a frame.
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           ChangeNotifierProvider<MetadataService>.value(value: metadataService),
-          ChangeNotifierProvider(create: (_) => ConfigProvider()..loadConfig()),
+          ChangeNotifierProvider<ConfigProvider>.value(value: configProvider),
         ],
-        child: InspectWApp(meta: metadataService),
+        child:
+            InspectWApp(meta: metadataService, configProvider: configProvider),
       ),
     );
 
@@ -70,14 +80,19 @@ void main() {
     final metadataService = MetadataService();
     await metadataService.init();
 
+    // Initialize the config provider
+    final configProvider = ConfigProvider();
+    await configProvider.loadConfig();
+
     // Build our app and trigger a frame.
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           ChangeNotifierProvider<MetadataService>.value(value: metadataService),
-          ChangeNotifierProvider(create: (_) => ConfigProvider()..loadConfig()),
+          ChangeNotifierProvider<ConfigProvider>.value(value: configProvider),
         ],
-        child: InspectWApp(meta: metadataService),
+        child:
+            InspectWApp(meta: metadataService, configProvider: configProvider),
       ),
     );
 

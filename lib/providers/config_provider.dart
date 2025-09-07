@@ -14,7 +14,7 @@ class ConfigProvider extends ChangeNotifier {
 
   Future<void> loadConfig() async {
     _isLoading = true;
-    notifyListeners();
+    // No llamar notifyListeners() aquí durante la inicialización
 
     try {
       _groups = await ConfigService.getCustomGroups();
@@ -29,7 +29,11 @@ class ConfigProvider extends ChangeNotifier {
     }
 
     _isLoading = false;
-    notifyListeners();
+    // Solo notificar después de que la inicialización esté completa
+    // y el widget esté montado
+    if (hasListeners) {
+      notifyListeners();
+    }
   }
 
   Future<bool> saveConfig({

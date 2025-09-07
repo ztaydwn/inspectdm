@@ -6,21 +6,29 @@ import 'providers/config_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicializar servicios
   final meta = MetadataService();
   await meta.init();
-  runApp(InspectWApp(meta: meta));
+
+  final configProvider = ConfigProvider();
+  await configProvider.loadConfig();
+
+  runApp(InspectWApp(meta: meta, configProvider: configProvider));
 }
 
 class InspectWApp extends StatelessWidget {
   final MetadataService meta;
-  const InspectWApp({super.key, required this.meta});
+  final ConfigProvider configProvider;
+  const InspectWApp(
+      {super.key, required this.meta, required this.configProvider});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<MetadataService>.value(value: meta),
-        ChangeNotifierProvider(create: (_) => ConfigProvider()..loadConfig()),
+        ChangeNotifierProvider<ConfigProvider>.value(value: configProvider),
       ],
       child: MaterialApp(
         title: 'InspectW Camera Custom',
